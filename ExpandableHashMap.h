@@ -2,11 +2,10 @@
 
 // Skeleton for the ExpandableHashMap class template.  You must implement the first six
 // member functions.
-#ifndef HASHMAP
-#define HASHMAP
-
-#include <list> // ?
-#include "provided.h"
+#include <iostream>
+#include <list>
+#include <vector>
+#include <utility>
 
 template<typename KeyType, typename ValueType>
 class ExpandableHashMap
@@ -32,32 +31,21 @@ public:
 	ExpandableHashMap& operator=(const ExpandableHashMap&) = delete;
 
 private:
-	struct Node
+	int m_size;
+	int m_load;
+	int m_associations;
+	std::vector<std::list<std::pair<KeyType,ValueType>>> m_table;
+	unsigned int hashVal(const KeyType& key)
 	{
-		Node(KeyType k, ValueType v)
-		{
-			this->myKey = k;
-			this->myVal = v;
-		}
-		int getKey() { return myKey; };
-		int getVal() { return myVal; };
-		KeyType myKey;
-		ValueType myVal;
-	};
-	unsigned int hasher(const GeoCoord& g)
-	{
-		return std::hash<std::string>()(g.latitudeText + g.longitudeText);
+		int h = 0;
+		unsigned int hasher(int h);
+		return hasher(h);
 	}
-	std::list<Node> *m_table;
-	double m_load;
-	int m_size = 8;
-	int m_filled = 0;
 };
 
 template<typename KeyType, typename ValueType>
-ExpandableHashMap<KeyType, ValueType>::ExpandableHashMap(double maximumLoadFactor)
+ExpandableHashMap<KeyType, ValueType>::ExpandableHashMap(double maximumLoadFactor):m_table(8)
 {
-	m_table = new std::list<Node>[m_size];
 	if (maximumLoadFactor > 0)
 	{
 		m_load = maximumLoadFactor;
@@ -67,55 +55,67 @@ ExpandableHashMap<KeyType, ValueType>::ExpandableHashMap(double maximumLoadFacto
 }
 
 template<typename KeyType, typename ValueType>
-ExpandableHashMap<KeyType, ValueType>::~ExpandableHashMap()
+ExpandableHashMap<KeyType,ValueType>::~ExpandableHashMap()
 {
-	for (int i = 0; i < m_size; i++)
-	{
-		if (m_table[i] != nullptr)
-			delete m_table[i];
-	}
-	delete[] m_table;
+	m_table.clear();
 }
 
 template<typename KeyType, typename ValueType>
 void ExpandableHashMap<KeyType, ValueType>::reset()
 {
-	for (int i = 0; i < m_size; i++)
-	{
-		if (m_table[i] != nullptr)
-			delete m_table[i];
-	}
-	m_size = 8;
+	m_table.clear();
+	m_table.resize(8);
+	m_associations = 0;
 }
 
 template<typename KeyType, typename ValueType>
 int ExpandableHashMap<KeyType, ValueType>::size() const
 {
-	return m_size;
+	return m_associations;  // returns number of associations
 }
 
 template<typename KeyType, typename ValueType>
 void ExpandableHashMap<KeyType, ValueType>::associate(const KeyType& key, const ValueType& value)
 {
-	int index = hasher(key);
-	Node* toPush = new Node(key, value);
-	m_table[index].push_back(toPush);
-	
-	/*if (m_filled / m_size > m_load)
+	bool loadCap = false;
+	int index = hashVal(key);
+	for (auto& [k,v] : m_table[index])
 	{
-		for (int i = 0; i < m_size; i++)
+		if (k == key)//if key exists reset value
 		{
-			m_size *= 2;
-			if (m_table[i] != nullptr)
-				delete m_table[i];
+			v = value;
+			return;
 		}
-	}*/ //how to implement
+	}
+	m_table[index].emplace_back(key, value);
+	m_associations++;
+	if (m_associations / m_table.size() > m_load)//insert new pair
+	{
+		std::vector<std::list<std::pair<KeyType, ValueType>>> temp(m_table.size() * 2);
+		m_table.swap(temp);
+		for (std::list<std::pair<KeyType, ValueType>>& bucket : temp)
+		{
+			for (auto& [k, v] : bucket)
+			{
+				int index = hashVal(key);
+				m_table[index].emplace_back(key, value);
+			}
+		}
+	}
 }
 
 template<typename KeyType, typename ValueType>
 const ValueType* ExpandableHashMap<KeyType, ValueType>::find(const KeyType& key) const
 {
-	return nullptr;  // Delete this line and implement this function correctly
+	int index = hashVal(key);
+	for (auto& [k, v] : m_table[index])
+	{
+		if (k == key)
+		{
+			return& v;
+		}
+	}
+	return nullptr;
 }
 
-#endif
+//streetmap: expandablehashmap<geocoord>,vector<streetseg>> hashmap
