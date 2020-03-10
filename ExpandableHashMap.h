@@ -31,20 +31,19 @@ public:
 	ExpandableHashMap& operator=(const ExpandableHashMap&) = delete;
 
 private:
-	int m_size;
 	int m_load;
 	int m_associations;
-	std::vector<std::list<std::pair<KeyType,ValueType>>> m_table;
-	unsigned int hashVal(const KeyType& key)
+	std::vector<std::list<std::pair<KeyType, ValueType>>> m_table;
+	unsigned int hashVal(const KeyType& key) const
 	{
-		int h = 0;
-		unsigned int hasher(int h);
-		return hasher(h);
+		unsigned int hasher(const KeyType & key);
+		unsigned int h = hasher(key);
+		return h;
 	}
 };
 
 template<typename KeyType, typename ValueType>
-ExpandableHashMap<KeyType, ValueType>::ExpandableHashMap(double maximumLoadFactor):m_table(8)
+ExpandableHashMap<KeyType, ValueType>::ExpandableHashMap(double maximumLoadFactor) :m_table(8)
 {
 	if (maximumLoadFactor > 0)
 	{
@@ -55,7 +54,7 @@ ExpandableHashMap<KeyType, ValueType>::ExpandableHashMap(double maximumLoadFacto
 }
 
 template<typename KeyType, typename ValueType>
-ExpandableHashMap<KeyType,ValueType>::~ExpandableHashMap()
+ExpandableHashMap<KeyType, ValueType>::~ExpandableHashMap()
 {
 	m_table.clear();
 }
@@ -79,7 +78,7 @@ void ExpandableHashMap<KeyType, ValueType>::associate(const KeyType& key, const 
 {
 	bool loadCap = false;
 	int index = hashVal(key);
-	for (auto& [k,v] : m_table[index])
+	for (auto& [k, v] : m_table[index])
 	{
 		if (k == key)//if key exists reset value
 		{
@@ -87,9 +86,12 @@ void ExpandableHashMap<KeyType, ValueType>::associate(const KeyType& key, const 
 			return;
 		}
 	}
-	m_table[index].emplace_back(key, value);
+
+	//std::cerr << key << "/" << value << std::endl;
+
+	m_table[index].emplace_back(key, value); //insert new pair
 	m_associations++;
-	if (m_associations / m_table.size() > m_load)//insert new pair
+	if (m_associations / m_table.size() > m_load) //if load is exceeded create a temp that is 2x current table size and fill it
 	{
 		std::vector<std::list<std::pair<KeyType, ValueType>>> temp(m_table.size() * 2);
 		m_table.swap(temp);
@@ -108,11 +110,11 @@ template<typename KeyType, typename ValueType>
 const ValueType* ExpandableHashMap<KeyType, ValueType>::find(const KeyType& key) const
 {
 	int index = hashVal(key);
-	for (auto& [k, v] : m_table[index])
+	for (auto& [k, v] : m_table[index]) //return address to value of given key if found
 	{
 		if (k == key)
 		{
-			return& v;
+			return&v;
 		}
 	}
 	return nullptr;
