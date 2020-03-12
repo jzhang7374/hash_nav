@@ -9,7 +9,7 @@
 
 using namespace std;
 
-unsigned int hash(const GeoCoord& g)
+unsigned int hasher(const GeoCoord& g)
 {
 	return std::hash<string>()(g.latitudeText + g.longitudeText);
 }
@@ -35,7 +35,7 @@ StreetMapImpl::~StreetMapImpl()
 
 bool StreetMapImpl::load(string mapFile)
 {
-	ifstream infile("mapdata.txt"); //find the map file
+	ifstream infile(mapFile); //find the map file
 	if (!infile)
 	{
 		cerr << "can't open" << endl;//if cant open data file
@@ -52,7 +52,7 @@ bool StreetMapImpl::load(string mapFile)
 	int x = 0;
 
 	//read each line of the file, returns true if a line is read, false otherwise
-	while (getline(infile, line)) 
+	while (getline(infile, line))
 	{
 		switch (x)
 		{
@@ -62,12 +62,12 @@ bool StreetMapImpl::load(string mapFile)
 			x--;
 			break;
 		}
-		case-1: 
+		case-1:
 		{
 			x = stoi(line); //number of geocoords
 			break;
 		}
-		default: 
+		default:
 		{
 			istringstream iss(coordLine);
 			if (iss >> begLatCoord >> begLongCoord >> finLatCoord >> finLongCoord)
@@ -75,7 +75,6 @@ bool StreetMapImpl::load(string mapFile)
 				GeoCoord begSegment = GeoCoord(begLatCoord, begLongCoord);
 				GeoCoord finSegment = GeoCoord(finLatCoord, finLongCoord);
 				vector<StreetSegment>* findvalsBeg = m_hashMap.find(begSegment);
-				vector<StreetSegment>* findvalsFin = m_hashMap.find(finSegment);
 				StreetSegment newSegment = StreetSegment(begSegment, finSegment, streetName);
 				StreetSegment newSegmentRev = StreetSegment(finSegment, begSegment, streetName);
 
@@ -88,6 +87,9 @@ bool StreetMapImpl::load(string mapFile)
 				}
 				else
 					findvalsBeg->push_back(newSegment);
+
+				vector<StreetSegment>* findvalsFin = m_hashMap.find(finSegment);
+
 				if (findvalsFin == nullptr)
 				{
 					m_hashMap.associate(begSegment, keyReverse);
@@ -102,6 +104,7 @@ bool StreetMapImpl::load(string mapFile)
 	}
 	return true;
 }
+
 
 bool StreetMapImpl::getSegmentsThatStartWith(const GeoCoord& gc, vector<StreetSegment>& segs) const
 {
