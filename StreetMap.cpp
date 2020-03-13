@@ -11,7 +11,7 @@ using namespace std;
 
 unsigned int hasher(const GeoCoord& g)
 {
-	return std::hash<string>()(g.latitudeText + g.longitudeText);
+	return std::hash<std::string>()(g.latitudeText + g.longitudeText);
 }
 
 class StreetMapImpl
@@ -34,6 +34,61 @@ StreetMapImpl::~StreetMapImpl()
 }
 
 bool StreetMapImpl::load(string mapFile)
+{
+	ifstream infile(mapFile);
+	if (!infile) 
+	{
+		return false;
+	}
+
+	string name;
+	while (getline(infile, name))
+	{
+		string num;
+		getline(infile, num);
+		int amt = stoi(num);
+		for (int i = 0; i < amt; i++)
+		{
+			string segment;
+			getline(infile, segment);
+			string beg1 = segment.substr(0, segment.find(" "));
+			segment = segment.substr(segment.find(" ") + 1, segment.size() - 1);
+			string beg2 = segment.substr(0, segment.find(" "));
+			GeoCoord geo1(beg1, beg2);
+			segment = segment.substr(segment.find(" ") + 1, segment.size() - 1);
+			string fin1 = segment.substr(0, segment.find(" "));
+			segment = segment.substr(segment.find(" ") + 1, segment.size() - 1);
+			string fin2 = segment.substr(0, segment.find(" "));
+			GeoCoord geo2(fin1, fin2);
+			StreetSegment segFor(geo1, geo2, name);
+			StreetSegment segRev(geo2, geo1, name);
+			if (m_hashMap.find(geo1) == nullptr)
+			{
+				vector<StreetSegment> temp;
+				temp.push_back(segFor);
+				m_hashMap.associate(geo1, temp);
+			}
+			else
+			{
+				vector<StreetSegment>* point = m_hashMap.find(geo1);
+				point->push_back(segFor);
+			}
+			if (m_hashMap.find(geo2) == nullptr)
+			{
+				vector<StreetSegment> temp;
+				temp.push_back(segRev);
+				m_hashMap.associate(geo2, temp);
+			}
+			else
+			{
+				vector<StreetSegment>* point = m_hashMap.find(geo2);
+				point->push_back(segRev);
+			}
+		}
+	}
+	return true;
+}
+/*bool StreetMapImpl::load(string mapFile)
 {
 	ifstream infile(mapFile); //find the map file
 	if (!infile)
@@ -103,18 +158,20 @@ bool StreetMapImpl::load(string mapFile)
 		}
 	}
 	return true;
-}
+}*/
 
 
 bool StreetMapImpl::getSegmentsThatStartWith(const GeoCoord& gc, vector<StreetSegment>& segs) const
 {
-	const vector<StreetSegment>* findVals = m_hashMap.find(gc);
-
-	if (findVals == nullptr)
+	if (m_hashMap.size() == 0)
 		return false;
-
-	segs = *(m_hashMap.find(gc));
-	return true;
+	if (m_hashMap.find(gc) == nullptr)
+		return false;
+	else
+	{
+		segs = *(m_hashMap.find(gc));
+		return true;
+	}
 }
 
 //******************** StreetMap functions ************************************
