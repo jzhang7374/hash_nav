@@ -91,7 +91,7 @@ void ExpandableHashMap<KeyType, ValueType>::associate(const KeyType& key, const 
 	m_table[index].emplace_back(key, value);
 	//std::cerr << key << "/" << value << std::endl;
 	m_associations++;
-	if ((m_associations / m_table.size()) > m_load)//insert new pair
+	if (m_associations / m_table.size() > m_load)//insert new pair
 	{
 		std::vector<std::list<std::pair<KeyType, ValueType>>> temp(m_table.size() * 2);
 		m_table.swap(temp);

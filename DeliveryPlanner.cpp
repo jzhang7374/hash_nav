@@ -50,12 +50,12 @@ DeliveryResult DeliveryPlannerImpl::generateDeliveryPlan(const GeoCoord& depot, 
     for (int i = 0; i < deliveries.size(); i++) {       //put deliveries into a delivery vector
         delivery.push_back(deliveries[i]);
     }
-    for (int i = 0; i < delivery.size(); i++) {         //check if all delivery locations are valid
+    /*for (int i = 0; i < delivery.size(); i++) {         //check if all delivery locations are valid
         if (!street->getSegmentsThatStartWith(delivery[i].location, streetsegs)) {
-            cout << "here" << endl;
+            cerr << "here" << endl;
             return NO_ROUTE;
         }
-    }
+    }*/
     s.optimizeDeliveryOrder(depot, delivery, oldcd, newcd);
     bool depotnotdelivery = false;
     if (depot == delivery[0].location) {
@@ -67,7 +67,9 @@ DeliveryResult DeliveryPlannerImpl::generateDeliveryPlan(const GeoCoord& depot, 
     list<StreetSegment> temp;
     bool skipturn = false;
     int count = 0;
-    int count2 = 0;
+
+    if (r.generatePointToPointRoute(depot, delivery[0].location, start, totalmiles) == BAD_COORD) { return NO_ROUTE; };
+
     r.generatePointToPointRoute(depot, delivery[0].location, start, totalmiles);  //depot to first delivery location
     totalMILES += totalmiles;
     if (!depotnotdelivery) {    //if depot does not start at the delivery location
@@ -77,20 +79,17 @@ DeliveryResult DeliveryPlannerImpl::generateDeliveryPlan(const GeoCoord& depot, 
                     GeoCoord startpoint = it->start;
                     string name = it->name;
                     string direction = calculatedirection(*it);
-                    count++;
+                    /*count++;
                     cout << count << endl;
-                    cout << start.size() << endl;
-                    if (it->name == next(it)->name)
+                    cout << start.size() << endl;*/
+                    while (it->name == next(it)->name)
                     {       //loop until next street is not same name
-                        
-                        cout << count << endl;
-                        if (it != start.end() && next(it) != start.end())
-                            it++;
-                        else
+                        it++;
+                        if(next(it) == start.end())
                             break;
-                        cout << it->name << endl;
+                        /*cout << it->name << endl;
                         cout << it->start.latitude << "," << it->start.longitude << endl;
-                        cout << it->end.latitude << "," << it->end.longitude << endl;
+                        cout << it->end.latitude << "," << it->end.longitude << endl;*/
                     }                                               //generate proceed command
                     proc.initAsProceedCommand(direction, name, distanceEarthMiles(startpoint, it->end));
                     routes.push_back(proc);
@@ -142,10 +141,14 @@ DeliveryResult DeliveryPlannerImpl::generateDeliveryPlan(const GeoCoord& depot, 
                     GeoCoord startpoint = it->start;
                     string name = it->name;
                     string direction = calculatedirection(*it);
-                    if (it->name == next(it)->name) {
+                    while (it->name == next(it)->name) 
+                    {
                         it++;
+                        if (next(it) == generatedpaths[i].end())
+                            break;
                     }                                           //then generate the proceed command
                     proc.initAsProceedCommand(direction, name, distanceEarthMiles(startpoint, it->end));
+                    skipturn = false;
                     routes.push_back(proc);
                     it--;
                 }
@@ -180,8 +183,10 @@ DeliveryResult DeliveryPlannerImpl::generateDeliveryPlan(const GeoCoord& depot, 
                 GeoCoord startpoint = it->start;
                 string name = it->name;
                 string direction = calculatedirection(*it);
-                if (it->name == next(it)->name) {
+                while (it->name == next(it)->name) {
                     it++;
+                    if (next(it) == temp.end())
+                        break;
                 }                                               //generate the proceed command
                 proc.initAsProceedCommand(direction, name, distanceEarthMiles(startpoint, it->end));
                 routes.push_back(proc);
