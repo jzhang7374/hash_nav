@@ -11,7 +11,7 @@ using namespace std;
 
 unsigned int hasher(const GeoCoord& g)
 {
-	return std::hash<string>()(g.latitudeText + g.longitudeText);
+	return std::hash<std::string>()(g.latitudeText + g.longitudeText);
 }
 
 class StreetMapImpl
@@ -34,6 +34,64 @@ StreetMapImpl::~StreetMapImpl()
 }
 
 bool StreetMapImpl::load(string mapFile)
+{
+	ifstream infile(mapFile);
+	if (!infile) 
+	{
+		return false;
+	}
+
+	string name;
+	while (getline(infile, name))
+	{
+		string num;
+		getline(infile, num);
+		int amt = stoi(num);
+		for (int i = 0; i < amt; i++)
+		{
+			string segment;
+			getline(infile, segment); //differentiate between coords based on the spaces btwn
+			string beg1 = segment.substr(0, segment.find(" "));
+			segment = segment.substr(segment.find(" ") + 1, segment.size() - 1);
+			string beg2 = segment.substr(0, segment.find(" "));
+			GeoCoord geo1(beg1, beg2); //create geocoord with coordiantes
+			segment = segment.substr(segment.find(" ") + 1, segment.size() - 1);
+			string fin1 = segment.substr(0, segment.find(" "));
+			segment = segment.substr(segment.find(" ") + 1, segment.size() - 1);
+			string fin2 = segment.substr(0, segment.find(" "));
+			GeoCoord geo2(fin1, fin2);
+			StreetSegment segFor(geo1, geo2, name); //create streetsegs with geocoords
+			StreetSegment segRev(geo2, geo1, name);
+			if (m_hashMap.find(geo1) == nullptr) //if the gocoord doesn't exist in the hashmap insert it
+			{
+				vector<StreetSegment> temp;
+				temp.push_back(segFor);
+				m_hashMap.associate(geo1, temp);
+				//cout << geo1.latitudeText << " , " << geo1.longitudeText << endl;
+			}
+			else
+			{
+				vector<StreetSegment>* point = m_hashMap.find(geo1);
+				point->push_back(segFor);
+			}
+			if (m_hashMap.find(geo2) == nullptr)
+			{
+				vector<StreetSegment> temp;
+				temp.push_back(segRev);
+				m_hashMap.associate(geo2, temp);
+				//cout << geo2.latitudeText << " , " << geo2.longitudeText << endl;
+			}
+			else
+			{
+				vector<StreetSegment>* point = m_hashMap.find(geo2);
+				point->push_back(segRev);
+			}
+		}
+	}
+	//cout << m_hashMap.size();
+	return true;
+}
+/*bool StreetMapImpl::load(string mapFile)
 {
 	ifstream infile(mapFile); //find the map file
 	if (!infile)
@@ -103,18 +161,20 @@ bool StreetMapImpl::load(string mapFile)
 		}
 	}
 	return true;
-}
+}*/
 
 
 bool StreetMapImpl::getSegmentsThatStartWith(const GeoCoord& gc, vector<StreetSegment>& segs) const
 {
-	const vector<StreetSegment>* findVals = m_hashMap.find(gc);
-
-	if (findVals == nullptr)
+	if (m_hashMap.size() == 0)
 		return false;
-
-	segs = *(m_hashMap.find(gc));
-	return true;
+	if (m_hashMap.find(gc) == nullptr)
+		return false;
+	else
+	{
+		segs = *(m_hashMap.find(gc));
+		return true;
+	}
 }
 
 //******************** StreetMap functions ************************************
