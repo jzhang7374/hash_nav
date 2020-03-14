@@ -46,7 +46,7 @@ private:
 			return geo1->fCost() < geo2->fCost();
 		}
 	};
-	vector<GeoNode> getNeighbors(GeoNode* current,GeoCoord end) const;
+	vector<GeoNode> getNeighbors(GeoNode* current) const;
 	list<StreetSegment> determineRoute(GeoNode* node) const;
 	void removePtrs(set<GeoNode*, GeoNode_set> geo, list<GeoNode*> list) const;
 	const StreetMap* m_street;
@@ -73,12 +73,6 @@ DeliveryResult PointToPointRouterImpl::generatePointToPointRoute(
 	GeoNode* begNode = new GeoNode(nullptr, start, end);
 	openList.insert(begNode);
 
-	if (start == end)
-	{
-		return DELIVERY_SUCCESS;
-		totalDistanceTravelled = 0;
-	}
-	
 	vector<StreetSegment> segments;
 	if (!m_street->getSegmentsThatStartWith(start, segments) || !m_street->getSegmentsThatStartWith(end, segments))
 	{
@@ -86,12 +80,18 @@ DeliveryResult PointToPointRouterImpl::generatePointToPointRoute(
 		totalDistanceTravelled = 0;
 	}
 
+	if (start == end)
+	{
+		return DELIVERY_SUCCESS;
+		totalDistanceTravelled = 0;
+	}
+	
 	while (!openList.empty())
 	{
 		GeoNode* currentNode = *openList.begin();
 		openList.erase(openList.begin());
 
-		vector<GeoNode> neighbors = getNeighbors(currentNode, end);
+		vector<GeoNode> neighbors = getNeighbors(currentNode);
 
 		for (GeoNode neighbor : neighbors)
 		{
@@ -103,6 +103,7 @@ DeliveryResult PointToPointRouterImpl::generatePointToPointRoute(
 					distance += distanceEarthMiles((*it).start, (*it).end);
 				}
 				totalDistanceTravelled = distance;
+				delete currentNode;
 				removePtrs(openList, closedList);
 				return DELIVERY_SUCCESS;
 			}
@@ -137,14 +138,14 @@ DeliveryResult PointToPointRouterImpl::generatePointToPointRoute(
 	return NO_ROUTE;  // Delete this line and implement this function correctly
 }
 
-vector<PointToPointRouterImpl::GeoNode> PointToPointRouterImpl::getNeighbors(GeoNode* current, GeoCoord end) const
+vector<PointToPointRouterImpl::GeoNode> PointToPointRouterImpl::getNeighbors(GeoNode* current) const
 {
 	vector<StreetSegment> segments;
 	vector<GeoNode> nodes;
 	m_street->getSegmentsThatStartWith(current->curr, segments);
 	for (int i = 0; i < segments.size(); i++)
 	{
-		GeoNode geo(current, segments[i].end, end);
+		GeoNode geo(current, segments[i].end, current->fol);
 		nodes.push_back(geo);
 	}
 	return nodes;
@@ -158,15 +159,19 @@ list<StreetSegment> PointToPointRouterImpl::determineRoute(GeoNode* node) const
 	//node.curr
 	//pass that into segments that start with
 	list<StreetSegment> route;
-	vector<StreetSegment> reverseSegs;
 
-	m_street->getSegmentsThatStartWith(node->parent->curr, reverseSegs);
-	for(StreetSegment street : reverseSegs)
+	while(node->parent != nullptr)
 	{
-		if (street.end == node->curr && street.start == node->parent->curr)
+		vector<StreetSegment> parentSegs;
+		m_street->getSegmentsThatStartWith(node->parent->curr, parentSegs);
+
+		for (StreetSegment seg : parentSegs)
 		{
-			route.push_front(street);
-			node = node->parent;
+			if (seg.end == node->curr && seg.start == node->parent->curr)
+			{
+				route.push_front(seg);
+				node = node->parent;
+			}
 		}
 	}
 	return route;
